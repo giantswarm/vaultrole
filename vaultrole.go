@@ -7,8 +7,6 @@ import (
 
 type Config struct {
 	VaultClient *vaultclient.Client
-
-	PKIMountpoint string
 }
 
 func DefaultConfig() Config {
@@ -19,8 +17,6 @@ func DefaultConfig() Config {
 
 type VaultRole struct {
 	vaultClient *vaultclient.Client
-
-	pkiMountpoint string
 }
 
 func New(config Config) (*VaultRole, error) {
@@ -28,14 +24,8 @@ func New(config Config) (*VaultRole, error) {
 		return nil, microerror.Maskf(invalidConfigError, "Vault client must not be empty")
 	}
 
-	if config.PKIMountpoint == "" {
-		return nil, microerror.Maskf(invalidConfigError, "PKIMountpoint must not be empty")
-	}
-
 	r := &VaultRole{
 		vaultClient: config.VaultClient,
-
-		pkiMountpoint: config.PKIMountpoint,
 	}
 
 	return r, nil

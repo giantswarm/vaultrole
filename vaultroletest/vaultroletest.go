@@ -13,6 +13,6 @@ func (r *VaultRoleTest) Create(config vaultrole.CreateConfig) error {
 	return nil
 }
 
-func (r *VaultRoleTest) Exists(ID string) (bool, error) {
+func (r *VaultRoleTest) Exists(config vaultrole.ExistsConfig) (bool, error) {
 	return false, nil
 }

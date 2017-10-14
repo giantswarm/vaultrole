@@ -7,7 +7,7 @@ import (
 )
 
 func (r *VaultRole) Create(config CreateConfig) error {
-	k := key.WriteRolePath(config.ID, key.RoleName(config.ID))
+	k := key.WriteRolePath(config.ID, config.Organizations)
 	v := map[string]interface{}{
 		"allow_bare_domains": config.AllowBareDomains,
 		"allow_subdomains":   config.AllowSubdomains,

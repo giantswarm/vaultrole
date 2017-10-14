@@ -9,7 +9,12 @@ type CreateConfig struct {
 	TTL              string
 }
 
+type ExistsConfig struct {
+	ID            string
+	Organizations string
+}
+
 type Interface interface {
 	Create(config CreateConfig) error
-	Exists(ID string) (bool, error)
+	Exists(config ExistsConfig) (bool, error)
 }

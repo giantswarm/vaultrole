@@ -6,9 +6,9 @@ import (
 	"github.com/giantswarm/vaultrole/key"
 )
 
-func (r *VaultRole) Exists(ID string) (bool, error) {
+func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 	// Check if a PKI for the given cluster ID exists.
-	secret, err := r.vaultClient.Logical().List(key.ListRolesPath(ID))
+	secret, err := r.vaultClient.Logical().List(key.ListRolesPath(config.ID))
 	if IsNoVaultHandlerDefined(err) {
 		return false, nil
 	} else if err != nil {
@@ -26,7 +26,7 @@ func (r *VaultRole) Exists(ID string) (bool, error) {
 	if keys, ok := secret.Data["keys"]; ok {
 		if list, ok := keys.([]interface{}); ok {
 			for _, k := range list {
-				if str, ok := k.(string); ok && str == key.RoleName(ID) {
+				if str, ok := k.(string); ok && str == key.RoleName(config.ID, config.Organizations) {
 					return true, nil
 				}
 			}

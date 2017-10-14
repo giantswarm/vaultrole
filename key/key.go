@@ -17,8 +17,8 @@ func ListRolesPath(ID string) string {
 	return fmt.Sprintf("pki-%s/roles/", ID)
 }
 
-func RoleName(ID string, organizations string) string {
-	if organizations == "" {
+func RoleName(ID string, organizations []string) string {
+	if len(organizations) == 0 {
 		// If organizations isn't set, use the role that was created when the PKI
 		// for this cluster was first setup.
 		return fmt.Sprintf("role-%s", ID)
@@ -29,7 +29,7 @@ func RoleName(ID string, organizations string) string {
 	return fmt.Sprintf("role-org-%s", computeRoleHash(organizations))
 }
 
-func WriteRolePath(ID string, organizations string) string {
+func WriteRolePath(ID string, organizations []string) string {
 	return fmt.Sprintf("pki-%s/roles/%s", ID, RoleName(ID, organizations))
 }
 
@@ -39,14 +39,12 @@ func WriteRolePath(ID string, organizations string) string {
 // (regardless of the order). The reason we don't use just the organizations
 // that the user provided is because that could potentially be a very long list,
 // or otherwise contain characters that are not allowed in URLs.
-func computeRoleHash(organizations string) string {
-	// Sort organizations alphabetically
-	organizationsSlice := strings.Split(organizations, ",")
-	sort.Strings(organizationsSlice)
-	organizations = strings.Join(organizationsSlice, ",")
+func computeRoleHash(organizations []string) string {
+	sort.Strings(organizations)
+	s := strings.Join(organizations, ",")
 
 	h := sha1.New()
-	h.Write([]byte(organizations))
+	h.Write([]byte(s))
 	bs := h.Sum(nil)
 
 	return fmt.Sprintf("%x", bs)

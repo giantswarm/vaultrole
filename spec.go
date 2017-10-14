@@ -5,13 +5,13 @@ type CreateConfig struct {
 	AllowSubdomains  bool
 	AltNames         []string
 	ID               string
-	Organizations    string
+	Organizations    []string
 	TTL              string
 }
 
 type ExistsConfig struct {
 	ID            string
-	Organizations string
+	Organizations []string
 }
 
 type Interface interface {

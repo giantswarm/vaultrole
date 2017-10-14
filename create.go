@@ -11,7 +11,7 @@ func (r *VaultRole) Create(config CreateConfig) error {
 	v := map[string]interface{}{
 		"allow_bare_domains": config.AllowBareDomains,
 		"allow_subdomains":   config.AllowSubdomains,
-		"allowed_domains":    config.AllowedDomains,
+		"allowed_domains":    key.AllowedDomains(config.ID, r.commonNameFormat, config.AltNames),
 		"organization":       config.Organizations,
 		"ttl":                config.TTL,
 	}

@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+func AllowedDomains(ID, commonNameFormat string, altNames []string) string {
+	commonName := fmt.Sprintf(commonNameFormat, ID)
+	domains := append([]string{commonName}, altNames...)
+	return strings.Join(domains, ",")
+}
+
 func ListRolesPath(ID string) string {
 	return fmt.Sprintf("pki-%s/roles/", ID)
 }

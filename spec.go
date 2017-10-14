@@ -3,7 +3,7 @@ package vaultrole
 type CreateConfig struct {
 	AllowBareDomains bool
 	AllowSubdomains  bool
-	AllowedDomains   string
+	AltNames         []string
 	ID               string
 	Organizations    string
 	TTL              string

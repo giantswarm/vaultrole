@@ -2,29 +2,39 @@ package vaultrole
 
 import (
 	"github.com/giantswarm/microerror"
+	"github.com/giantswarm/micrologger"
 	vaultclient "github.com/hashicorp/vault/api"
 )
 
 type Config struct {
+	Logger      micrologger.Logger
 	VaultClient *vaultclient.Client
 }
 
 func DefaultConfig() Config {
-	config := Config{}
+	config := Config{
+		Logger:      nil,
+		VaultClient: nil,
+	}
 
 	return config
 }
 
 type VaultRole struct {
+	logger      micrologger.Logger
 	vaultClient *vaultclient.Client
 }
 
 func New(config Config) (*VaultRole, error) {
+	if config.Logger == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.Logger must not be empty")
+	}
 	if config.VaultClient == nil {
-		return nil, microerror.Maskf(invalidConfigError, "Vault client must not be empty")
+		return nil, microerror.Maskf(invalidConfigError, "config.VaultClient must not be empty")
 	}
 
 	r := &VaultRole{
+		logger:      config.Logger,
 		vaultClient: config.VaultClient,
 	}
 

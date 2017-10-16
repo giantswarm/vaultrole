@@ -1,6 +1,8 @@
 package vaultrole
 
 import (
+	"strings"
+
 	"github.com/giantswarm/microerror"
 
 	"github.com/giantswarm/vaultrole/key"
@@ -12,7 +14,7 @@ func (r *VaultRole) Create(config CreateConfig) error {
 		"allow_bare_domains": config.AllowBareDomains,
 		"allow_subdomains":   config.AllowSubdomains,
 		"allowed_domains":    key.AllowedDomains(config.ID, r.commonNameFormat, config.AltNames),
-		"organization":       config.Organizations,
+		"organization":       strings.Join(config.Organizations, ","),
 		"ttl":                config.TTL,
 	}
 

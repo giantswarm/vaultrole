@@ -2,12 +2,12 @@ package vaultrole
 
 import (
 	"github.com/giantswarm/microerror"
+	"github.com/hashicorp/vault/api"
 
 	"github.com/giantswarm/vaultrole/key"
 )
 
 func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
-	r.logger.Log("jgsqware 1", config.Organizations)
 	// Check if a PKI for the given cluster ID exists.
 	secret, err := r.vaultClient.Logical().List(key.ListRolesPath(config.ID))
 	if IsNoVaultHandlerDefined(err) {
@@ -21,6 +21,10 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 		return false, nil
 	}
 
+	return roleExists(secret, config)
+}
+
+func roleExists(secret *api.Secret, config ExistsConfig) (bool, error) {
 	// When listing roles a list of role names is returned. Here we iterate over
 	// this list and if we find the desired role name, it means the role has
 	// already been created.
@@ -28,14 +32,11 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 		if list, ok := keys.([]interface{}); ok {
 			for _, k := range list {
 				if str, ok := k.(string); ok && str == key.RoleName(config.ID, config.Organizations) {
-
-					r.logger.Log("jgsqware 2", config.Organizations)
 					return true, nil
 				}
 			}
 		}
 	}
 
-	r.logger.Log("jgsqware 3", config.Organizations)
 	return false, nil
 }

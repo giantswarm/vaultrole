@@ -7,6 +7,7 @@ import (
 )
 
 func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
+	r.logger.Log("jgsqware 1", config.Organizations)
 	// Check if a PKI for the given cluster ID exists.
 	secret, err := r.vaultClient.Logical().List(key.ListRolesPath(config.ID))
 	if IsNoVaultHandlerDefined(err) {
@@ -27,11 +28,14 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 		if list, ok := keys.([]interface{}); ok {
 			for _, k := range list {
 				if str, ok := k.(string); ok && str == key.RoleName(config.ID, config.Organizations) {
+
+					r.logger.Log("jgsqware 2", config.Organizations)
 					return true, nil
 				}
 			}
 		}
 	}
 
+	r.logger.Log("jgsqware 3", config.Organizations)
 	return false, nil
 }

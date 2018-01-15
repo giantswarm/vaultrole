@@ -2,9 +2,9 @@ package vaultrole
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/giantswarm/microerror"
+	"github.com/hashicorp/vault/helper/parseutil"
 
 	"github.com/giantswarm/vaultrole/key"
 )
@@ -40,11 +40,11 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 }
 
 type role struct {
-	AllowBareDomains bool          `json:"allow_bare_domains"`
-	AllowSubdomains  bool          `json:"allow_subdomains"`
-	AllowedDomains   string        `json:"allowed_domains"`
-	Organizations    string        `json:"organization"` // NOTE the singular form here.
-	TTL              time.Duration `json:"TTL"`
+	AllowBareDomains bool   `json:"allow_bare_domains"`
+	AllowSubdomains  bool   `json:"allow_subdomains"`
+	AllowedDomains   string `json:"allowed_domains"`
+	Organizations    string `json:"organization"` // NOTE the singular form here.
+	TTL              string `json:"ttl"`
 }
 
 func (r *VaultRole) Search(config SearchConfig) (Role, error) {
@@ -74,6 +74,10 @@ func (r *VaultRole) Search(config SearchConfig) (Role, error) {
 
 	altNames := key.ToAltNames(internalRole.AllowedDomains)
 	organizations := key.ToOrganizations(internalRole.Organizations)
+	ttl, err := parseutil.ParseDurationSecond(internalRole.TTL)
+	if err != nil {
+		return Role{}, microerror.Mask(err)
+	}
 
 	newRole := Role{
 		AllowBareDomains: internalRole.AllowBareDomains,
@@ -81,7 +85,7 @@ func (r *VaultRole) Search(config SearchConfig) (Role, error) {
 		AltNames:         altNames,
 		ID:               config.ID,
 		Organizations:    organizations,
-		TTL:              internalRole.TTL,
+		TTL:              ttl,
 	}
 
 	return newRole, nil

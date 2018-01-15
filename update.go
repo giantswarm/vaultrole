@@ -4,7 +4,7 @@ import (
 	"github.com/giantswarm/microerror"
 )
 
-func (r *VaultRole) Create(config CreateConfig) error {
+func (r *VaultRole) Update(config UpdateConfig) error {
 	c := writeConfig{
 		AllowBareDomains: config.AllowBareDomains,
 		AllowSubdomains:  config.AllowSubdomains,

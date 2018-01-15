@@ -13,6 +13,13 @@ func IsInvalidConfig(err error) bool {
 	return microerror.Cause(err) == invalidConfigError
 }
 
+var notFoundError = microerror.New("not found")
+
+// IsNotFound asserts notFoundError.
+func IsNotFound(err error) bool {
+	return microerror.Cause(err) == notFoundError
+}
+
 // IsNoVaultHandlerDefined asserts a dirty string matching against the error
 // message provided by err. This is necessary due to the poor error handling
 // design of the Vault library we are using.

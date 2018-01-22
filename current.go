@@ -2,6 +2,7 @@ package vaultrole
 
 import (
 	"github.com/giantswarm/microerror"
+	"github.com/hashicorp/vault/api"
 
 	"github.com/giantswarm/vaultrole/key"
 )
@@ -20,6 +21,10 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 		return false, nil
 	}
 
+	return roleExists(secret, config)
+}
+
+func roleExists(secret *api.Secret, config ExistsConfig) (bool, error) {
 	// When listing roles a list of role names is returned. Here we iterate over
 	// this list and if we find the desired role name, it means the role has
 	// already been created.

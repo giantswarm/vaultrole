@@ -15,7 +15,7 @@ func (r *VaultRole) Create(config CreateConfig) error {
 		if err != nil {
 			return microerror.Mask(err)
 		}
-		if !exists {
+		if exists {
 			return microerror.Maskf(alreadyExistsError, "cannot create Vault role '%s'", config.ID)
 		}
 	}

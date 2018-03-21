@@ -1,9 +1,8 @@
 package vaultrole
 
 import (
-	"encoding/json"
-
 	"github.com/giantswarm/microerror"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/helper/parseutil"
 
 	"github.com/giantswarm/vaultrole/key"
@@ -61,32 +60,71 @@ func (r *VaultRole) Search(config SearchConfig) (Role, error) {
 		return Role{}, microerror.Maskf(notFoundError, "no vault secret at path '%s'", key.RoleName(config.ID, config.Organizations))
 	}
 
-	b, err := json.Marshal(secret.Data)
+	role, err := vaultSecretToRole(secret)
 	if err != nil {
 		return Role{}, microerror.Mask(err)
 	}
 
-	var internalRole role
-	err = json.Unmarshal(b, &internalRole)
-	if err != nil {
-		return Role{}, microerror.Mask(err)
+	role.ID = config.ID
+	return role, nil
+}
+
+// vaultSecretToRole makes required type casts / type checks and parsing to
+// extract role information from Vault api.Secret.
+func vaultSecretToRole(secret *api.Secret) (Role, error) {
+	var role Role
+
+	if allowBareDomains, ok := secret.Data["allow_bare_domains"].(bool); ok {
+		role.AllowBareDomains = allowBareDomains
+	} else {
+		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_bare_domains\"] type is %T, expected %T", secret.Data["allow_bare_domains"], allowBareDomains)
 	}
 
-	altNames := key.ToAltNames(internalRole.AllowedDomains)
-	organizations := key.ToOrganizations(internalRole.Organizations)
-	ttl, err := parseutil.ParseDurationSecond(internalRole.TTL)
-	if err != nil {
-		return Role{}, microerror.Mask(err)
+	if allowSubdomains, ok := secret.Data["allow_subdomains"].(bool); ok {
+		role.AllowSubdomains = allowSubdomains
+	} else {
+		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_subdomains\"] type is %T, expected %T", secret.Data["allow_subdomains"], allowSubdomains)
 	}
 
-	newRole := Role{
-		AllowBareDomains: internalRole.AllowBareDomains,
-		AllowSubdomains:  internalRole.AllowSubdomains,
-		AltNames:         altNames,
-		ID:               config.ID,
-		Organizations:    organizations,
-		TTL:              ttl,
+	// Types in secret.Data["allowed_domains"] differ between versions of
+	// Vault / configuration of g8s. Try couple different formats before
+	// giving up.
+	var allowedDomains []string
+	if one_allowed_domain, ok := secret.Data["allowed_domains"].(string); ok {
+		allowedDomains = append(allowedDomains, one_allowed_domain)
+	} else if multiple_allowed_domains, ok := secret.Data["allowed_domains"].([]string); ok {
+		allowedDomains = append(allowedDomains, multiple_allowed_domains...)
+	} else if interfaces, ok := secret.Data["allowed_domains"].([]interface{}); ok {
+		for i, val := range interfaces {
+			if s, ok := val.(string); ok {
+				allowedDomains = append(allowedDomains, s)
+			} else {
+				return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"][%d] has unexpected type '%T'. It's not string nor []string.", i, val)
+			}
+		}
+	} else {
+		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"] type is '%T'. It's not string, []string nor []interface{} (masking strings).", secret.Data["allowed_domains"])
 	}
 
-	return newRole, nil
+	// TODO: Why first one is dropped (this was in key.ToAltNames()?
+	role.AltNames = allowedDomains[1:]
+
+	if organization, ok := secret.Data["organization"].(string); ok {
+		role.Organizations = key.ToOrganizations(organization)
+	} else {
+		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"organization\"] type is %T, expected %T", secret.Data["organization"], organization)
+	}
+
+	if ttl, ok := secret.Data["ttl"].(string); ok {
+		ttl, err := parseutil.ParseDurationSecond(role.TTL)
+		if err != nil {
+			return Role{}, microerror.Mask(err)
+		}
+
+		role.TTL = ttl
+	} else {
+		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"ttl\"] type is %T, expected %T", secret.Data["ttl"], ttl)
+	}
+
+	return role, nil
 }

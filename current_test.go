@@ -88,7 +88,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsInvalidConfig,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
 			name: "case 4: test missing allow_subdomains field causes invalidConfigError",
@@ -101,7 +101,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsInvalidConfig,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
 			name: "case 5: test missing allowed_domains field causes invalidConfigError",
@@ -114,7 +114,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsInvalidConfig,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
 			name: "case 6: test missing organization field causes invalidConfigError",
@@ -127,7 +127,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsInvalidConfig,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
 			name: "case 6: test missing ttl field causes invalidConfigError",
@@ -140,10 +140,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsInvalidConfig,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 7: test wrong type in allow_bare_domains field causes wrongTypeError",
+			name: "case 7: test wrong type in allow_bare_domains field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": int(42),
@@ -154,10 +154,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsWrongType,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 8: test wrong type in allow_subdomains field causes wrongTypeError",
+			name: "case 8: test wrong type in allow_subdomains field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": true,
@@ -168,10 +168,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsWrongType,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 9: test wrong type in allowed_domains field causes wrongTypeError",
+			name: "case 9: test wrong type in allowed_domains field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": true,
@@ -182,10 +182,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsWrongType,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 10: test wrong type in organization field causes wrongTypeError",
+			name: "case 10: test wrong type in organization field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": true,
@@ -196,10 +196,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsWrongType,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 11: test wrong type in ttl field causes wrongTypeError",
+			name: "case 11: test wrong type in ttl field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": true,
@@ -210,10 +210,10 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: IsWrongType,
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
-			name: "case 12: test invalid ttl field causes wrongTypeError",
+			name: "case 12: test invalid ttl field causes invalidVaultResponseError",
 			input: &api.Secret{
 				Data: map[string]interface{}{
 					"allow_bare_domains": true,

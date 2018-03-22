@@ -69,12 +69,12 @@ func vaultSecretToRole(secret *api.Secret) (Role, error) {
 	{
 		v, exists := secret.Data["allow_bare_domains"]
 		if !exists {
-			return Role{}, microerror.Maskf(invalidConfigError, "allow_bare_domains missing from Vault api.Secret.Data")
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "allow_bare_domains missing from Vault api.Secret.Data")
 		}
 
 		allowBareDomains, ok := v.(bool)
 		if !ok {
-			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_bare_domains\"] type is %T, expected %T", secret.Data["allow_bare_domains"], allowBareDomains)
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"allow_bare_domains\"] type is %T, expected %T", secret.Data["allow_bare_domains"], allowBareDomains)
 		}
 
 		role.AllowBareDomains = allowBareDomains
@@ -83,12 +83,12 @@ func vaultSecretToRole(secret *api.Secret) (Role, error) {
 	{
 		v, exists := secret.Data["allow_subdomains"]
 		if !exists {
-			return Role{}, microerror.Maskf(invalidConfigError, "allow_subdomains missing from Vault api.Secret.Data")
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "allow_subdomains missing from Vault api.Secret.Data")
 		}
 
 		allowSubdomains, ok := v.(bool)
 		if !ok {
-			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_subdomains\"] type is %T, expected %T", secret.Data["allow_subdomains"], allowSubdomains)
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"allow_subdomains\"] type is %T, expected %T", secret.Data["allow_subdomains"], allowSubdomains)
 		}
 
 		role.AllowSubdomains = allowSubdomains
@@ -97,7 +97,7 @@ func vaultSecretToRole(secret *api.Secret) (Role, error) {
 	{
 		allowedDomains, exists := secret.Data["allowed_domains"]
 		if !exists {
-			return Role{}, microerror.Maskf(invalidConfigError, "allowed_domains missing from Vault api.Secret.Data")
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "allowed_domains missing from Vault api.Secret.Data")
 		}
 
 		// Types in secret.Data["allowed_domains"] differ between versions of
@@ -114,26 +114,26 @@ func vaultSecretToRole(secret *api.Secret) (Role, error) {
 				if s, ok := val.(string); ok {
 					allowedDomains = append(allowedDomains, s)
 				} else {
-					return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"][%d] has unexpected type '%T'. It's not string nor []string.", i, val)
+					return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"allowed_domains\"][%d] has unexpected type '%T'. It's not string nor []string.", i, val)
 				}
 			}
 
 			// TODO: Why first one is dropped (this was in key.ToAltNames()?
 			role.AltNames = allowedDomains[1:]
 		default:
-			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"] type is '%T'. It's not string, []string nor []interface{} (masking strings).", secret.Data["allowed_domains"])
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"allowed_domains\"] type is '%T'. It's not string, []string nor []interface{} (masking strings).", secret.Data["allowed_domains"])
 		}
 	}
 
 	{
 		v, exists := secret.Data["organization"]
 		if !exists {
-			return Role{}, microerror.Maskf(invalidConfigError, "organization missing from Vault api.Secret.Data")
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "organization missing from Vault api.Secret.Data")
 		}
 
 		organization, ok := v.(string)
 		if !ok {
-			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"organization\"] type is %T, expected %T", secret.Data["organization"], organization)
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"organization\"] type is %T, expected %T", secret.Data["organization"], organization)
 		}
 
 		role.Organizations = key.ToOrganizations(organization)
@@ -142,12 +142,12 @@ func vaultSecretToRole(secret *api.Secret) (Role, error) {
 	{
 		v, exists := secret.Data["ttl"]
 		if !exists {
-			return Role{}, microerror.Maskf(invalidConfigError, "ttl missing from Vault api.Secret.Data")
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "ttl missing from Vault api.Secret.Data")
 		}
 
 		ttlStr, ok := v.(string)
 		if !ok {
-			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"ttl\"] type is %T, expected %T", secret.Data["ttl"], ttlStr)
+			return Role{}, microerror.Maskf(invalidVaultResponseError, "Vault secret.Data[\"ttl\"] type is %T, expected %T", secret.Data["ttl"], ttlStr)
 		}
 
 		ttl, err := parseutil.ParseDurationSecond(ttlStr)

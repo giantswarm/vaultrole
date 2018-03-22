@@ -20,6 +20,13 @@ func IsInvalidConfig(err error) bool {
 	return microerror.Cause(err) == invalidConfigError
 }
 
+var invalidVaultResponseError = microerror.New("invalid vault response")
+
+// IsInvalidVaultResponse asserts invalidVaultResponseError
+func IsInvalidVaultResponse(err error) bool {
+	return microerror.Cause(err) == invalidVaultResponseError
+}
+
 var notFoundError = microerror.New("not found")
 
 // IsNotFound asserts notFoundError.
@@ -38,11 +45,4 @@ func IsNoVaultHandlerDefined(err error) bool {
 	}
 
 	return false
-}
-
-var wrongTypeError = microerror.New("wrong type")
-
-// IsWrongType asserts wrongTypeError.
-func IsWrongType(err error) bool {
-	return microerror.Cause(err) == wrongTypeError
 }

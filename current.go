@@ -38,14 +38,6 @@ func (r *VaultRole) Exists(config ExistsConfig) (bool, error) {
 	return false, nil
 }
 
-type role struct {
-	AllowBareDomains bool   `json:"allow_bare_domains"`
-	AllowSubdomains  bool   `json:"allow_subdomains"`
-	AllowedDomains   string `json:"allowed_domains"`
-	Organizations    string `json:"organization"` // NOTE the singular form here.
-	TTL              string `json:"ttl"`
-}
-
 func (r *VaultRole) Search(config SearchConfig) (Role, error) {
 	// Check if a PKI for the given cluster ID exists.
 	secret, err := r.vaultClient.Logical().Read(key.ReadRolePath(config.ID, config.Organizations))

@@ -66,56 +66,96 @@ func (r *VaultRole) Search(config SearchConfig) (Role, error) {
 func vaultSecretToRole(secret *api.Secret) (Role, error) {
 	var role Role
 
-	if allowBareDomains, ok := secret.Data["allow_bare_domains"].(bool); ok {
-		role.AllowBareDomains = allowBareDomains
-	} else {
-		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_bare_domains\"] type is %T, expected %T", secret.Data["allow_bare_domains"], allowBareDomains)
-	}
-
-	if allowSubdomains, ok := secret.Data["allow_subdomains"].(bool); ok {
-		role.AllowSubdomains = allowSubdomains
-	} else {
-		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_subdomains\"] type is %T, expected %T", secret.Data["allow_subdomains"], allowSubdomains)
-	}
-
-	// Types in secret.Data["allowed_domains"] differ between versions of
-	// Vault / configuration of g8s. Try couple different formats before
-	// giving up.
-	var allowedDomains []string
-	if one_allowed_domain, ok := secret.Data["allowed_domains"].(string); ok {
-		allowedDomains = append(allowedDomains, one_allowed_domain)
-	} else if multiple_allowed_domains, ok := secret.Data["allowed_domains"].([]string); ok {
-		allowedDomains = append(allowedDomains, multiple_allowed_domains...)
-	} else if interfaces, ok := secret.Data["allowed_domains"].([]interface{}); ok {
-		for i, val := range interfaces {
-			if s, ok := val.(string); ok {
-				allowedDomains = append(allowedDomains, s)
-			} else {
-				return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"][%d] has unexpected type '%T'. It's not string nor []string.", i, val)
-			}
+	{
+		v, exists := secret.Data["allow_bare_domains"]
+		if !exists {
+			return Role{}, microerror.Maskf(invalidConfigError, "allow_bare_domains missing from Vault api.Secret.Data")
 		}
-	} else {
-		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"] type is '%T'. It's not string, []string nor []interface{} (masking strings).", secret.Data["allowed_domains"])
+
+		allowBareDomains, ok := v.(bool)
+		if !ok {
+			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_bare_domains\"] type is %T, expected %T", secret.Data["allow_bare_domains"], allowBareDomains)
+		}
+
+		role.AllowBareDomains = allowBareDomains
 	}
 
-	// TODO: Why first one is dropped (this was in key.ToAltNames()?
-	role.AltNames = allowedDomains[1:]
+	{
+		v, exists := secret.Data["allow_subdomains"]
+		if !exists {
+			return Role{}, microerror.Maskf(invalidConfigError, "allow_subdomains missing from Vault api.Secret.Data")
+		}
 
-	if organization, ok := secret.Data["organization"].(string); ok {
+		allowSubdomains, ok := v.(bool)
+		if !ok {
+			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allow_subdomains\"] type is %T, expected %T", secret.Data["allow_subdomains"], allowSubdomains)
+		}
+
+		role.AllowSubdomains = allowSubdomains
+	}
+
+	{
+		allowedDomains, exists := secret.Data["allowed_domains"]
+		if !exists {
+			return Role{}, microerror.Maskf(invalidConfigError, "allowed_domains missing from Vault api.Secret.Data")
+		}
+
+		// Types in secret.Data["allowed_domains"] differ between versions of
+		// Vault / configuration of g8s. Try couple different formats before
+		// returning error.
+		switch v := allowedDomains.(type) {
+		case string:
+			role.AltNames = key.ToAltNames(v)
+		case []string:
+			role.AltNames = v[1:]
+		case []interface{}:
+			allowedDomains := make([]string, 0, len(v))
+			for i, val := range v {
+				if s, ok := val.(string); ok {
+					allowedDomains = append(allowedDomains, s)
+				} else {
+					return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"][%d] has unexpected type '%T'. It's not string nor []string.", i, val)
+				}
+			}
+
+			// TODO: Why first one is dropped (this was in key.ToAltNames()?
+			role.AltNames = allowedDomains[1:]
+		default:
+			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"allowed_domains\"] type is '%T'. It's not string, []string nor []interface{} (masking strings).", secret.Data["allowed_domains"])
+		}
+	}
+
+	{
+		v, exists := secret.Data["organization"]
+		if !exists {
+			return Role{}, microerror.Maskf(invalidConfigError, "organization missing from Vault api.Secret.Data")
+		}
+
+		organization, ok := v.(string)
+		if !ok {
+			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"organization\"] type is %T, expected %T", secret.Data["organization"], organization)
+		}
+
 		role.Organizations = key.ToOrganizations(organization)
-	} else {
-		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"organization\"] type is %T, expected %T", secret.Data["organization"], organization)
 	}
 
-	if ttl, ok := secret.Data["ttl"].(string); ok {
-		ttl, err := parseutil.ParseDurationSecond(role.TTL)
+	{
+		v, exists := secret.Data["ttl"]
+		if !exists {
+			return Role{}, microerror.Maskf(invalidConfigError, "ttl missing from Vault api.Secret.Data")
+		}
+
+		ttlStr, ok := v.(string)
+		if !ok {
+			return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"ttl\"] type is %T, expected %T", secret.Data["ttl"], ttlStr)
+		}
+
+		ttl, err := parseutil.ParseDurationSecond(ttlStr)
 		if err != nil {
 			return Role{}, microerror.Mask(err)
 		}
 
 		role.TTL = ttl
-	} else {
-		return Role{}, microerror.Maskf(wrongTypeError, "Vault secret.Data[\"ttl\"] type is %T, expected %T", secret.Data["ttl"], ttl)
 	}
 
 	return role, nil

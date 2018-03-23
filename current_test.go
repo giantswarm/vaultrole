@@ -231,6 +231,46 @@ func Test_vaultSecretToRole(t *testing.T) {
 				return false
 			},
 		},
+		{
+			name: "case 13: test post-vault-update with organizations as slice of interfaces which are string underneath",
+			input: &api.Secret{
+				Data: map[string]interface{}{
+					"allow_bare_domains": true,
+					"allow_subdomains":   true,
+					"allowed_domains":    "foo.com,bar.com,baz.com",
+					"organization":       []interface{}{"Foo", "Bar", "Baz"},
+					"ttl":                "3600s",
+				},
+			},
+			expectedRole: Role{
+				AllowBareDomains: true,
+				AllowSubdomains:  true,
+				AltNames:         []string{"bar.com", "baz.com"},
+				Organizations:    []string{"Foo", "Bar", "Baz"},
+				TTL:              3600 * time.Second,
+			},
+			errorMatcher: nil,
+		},
+		{
+			name: "case 14: test with organizations as slice of string",
+			input: &api.Secret{
+				Data: map[string]interface{}{
+					"allow_bare_domains": true,
+					"allow_subdomains":   true,
+					"allowed_domains":    "foo.com,bar.com,baz.com",
+					"organization":       []string{"Foo", "Bar", "Baz"},
+					"ttl":                "3600s",
+				},
+			},
+			expectedRole: Role{
+				AllowBareDomains: true,
+				AllowSubdomains:  true,
+				AltNames:         []string{"bar.com", "baz.com"},
+				Organizations:    []string{"Foo", "Bar", "Baz"},
+				TTL:              3600 * time.Second,
+			},
+			errorMatcher: nil,
+		},
 	}
 
 	for _, tc := range testCases {

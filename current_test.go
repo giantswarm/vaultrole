@@ -1,12 +1,11 @@
 package vaultrole
 
 import (
+	"encoding/json"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/giantswarm/microerror"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -25,7 +24,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    "foo.com,bar.com,baz.com",
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{
@@ -45,7 +44,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    []interface{}{"foo.com", "bar.com", "baz.com"},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{
@@ -65,7 +64,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{
@@ -84,7 +83,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains": true,
 					"allowed_domains":  []string{"foo.com", "bar.com", "baz.com"},
 					"organization":     "Foobar",
-					"ttl":              "3600s",
+					"ttl":              json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -97,7 +96,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_bare_domains": true,
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -110,7 +109,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_bare_domains": true,
 					"allow_subdomains":   true,
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -123,7 +122,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_bare_domains": true,
 					"allow_subdomains":   true,
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -150,7 +149,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -164,7 +163,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   string("foobar"),
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -178,7 +177,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    []int{1, 3, 5, 7, 11, 13},
 					"organization":       "Foobar",
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -192,7 +191,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    []string{"foo.com", "bar.com", "baz.com"},
 					"organization":       struct{}{},
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{},
@@ -224,12 +223,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 				},
 			},
 			expectedRole: Role{},
-			errorMatcher: func(e error) bool {
-				if _, ok := microerror.Cause(e).(*strconv.NumError); ok {
-					return true
-				}
-				return false
-			},
+			errorMatcher: IsInvalidVaultResponse,
 		},
 		{
 			name: "case 13: test post-vault-update with organizations as slice of interfaces which are string underneath",
@@ -239,7 +233,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    "foo.com,bar.com,baz.com",
 					"organization":       []interface{}{"Foo", "Bar", "Baz"},
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{
@@ -259,7 +253,7 @@ func Test_vaultSecretToRole(t *testing.T) {
 					"allow_subdomains":   true,
 					"allowed_domains":    "foo.com,bar.com,baz.com",
 					"organization":       []string{"Foo", "Bar", "Baz"},
-					"ttl":                "3600s",
+					"ttl":                json.Number("3600s"),
 				},
 			},
 			expectedRole: Role{

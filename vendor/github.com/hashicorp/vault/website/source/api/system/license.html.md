@@ -19,9 +19,9 @@ Vault.
 
 This endpoint returns information about the currently installed license.
 
-| Method   | Path                         |
-| :--------------------------- | :--------------------- |
-| `GET`    | `/sys/license`                |
+| Method   | Path                         | Produces               |
+| :------- | :--------------------------- | :--------------------- |
+| `GET`    | `/sys/license`                | `200 application/json` |
 
 ### Sample Request
 
@@ -56,9 +56,9 @@ $ curl \
 
 This endpoint is used to install a license into Vault.
 
-| Method   | Path                         |
-| :--------------------------- | :--------------------- |
-| `PUT`    | `/sys/license`                |
+| Method   | Path                         | Produces               |
+| :------- | :--------------------------- | :--------------------- |
+| `PUT`    | `/sys/license`                | `204 (empty body)` |
 
 ### Parameters
 

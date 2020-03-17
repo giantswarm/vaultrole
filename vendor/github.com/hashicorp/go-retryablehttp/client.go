@@ -24,6 +24,7 @@ package retryablehttp
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,12 +34,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-cleanhttp"
 )
 
 var (
@@ -47,6 +48,9 @@ var (
 	defaultRetryWaitMax = 30 * time.Second
 	defaultRetryMax     = 4
 
+	// defaultLogger is the logger provided with defaultClient
+	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
+
 	// defaultClient is used for performing requests without explicitly making
 	// a new client. It is purposely private to avoid modifications.
 	defaultClient = NewClient()
@@ -54,6 +58,16 @@ var (
 	// We need to consume response bodies to maintain http connections, but
 	// limit the size we consume to respReadLimit.
 	respReadLimit = int64(4096)
+
+	// A regular expression to match the error returned by net/http when the
+	// configured number of redirects is exhausted. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	redirectsErrorRe = regexp.MustCompile(`stopped after \d+ redirects\z`)
+
+	// A regular expression to match the error returned by net/http when the
+	// scheme specified in the URL is invalid. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	schemeErrorRe = regexp.MustCompile(`unsupported protocol scheme`)
 )
 
 // ReaderFunc is the type of function that can be given natively to NewRequest
@@ -230,14 +244,22 @@ type Logger interface {
 	Printf(string, ...interface{})
 }
 
-// To adapt an hclog.Logger to Logger for use by the existing hook functions
+// LeveledLogger interface implements the basic methods that a logger library needs
+type LeveledLogger interface {
+	Error(string, ...interface{})
+	Info(string, ...interface{})
+	Debug(string, ...interface{})
+	Warn(string, ...interface{})
+}
+
+// hookLogger adapts an LeveledLogger to Logger for use by the existing hook functions
 // without changing the API.
 type hookLogger struct {
-	logger hclog.Logger
+	LeveledLogger
 }
 
 func (h hookLogger) Printf(s string, args ...interface{}) {
-	h.logger.Info(fmt.Sprintf(s, args...))
+	h.Info(fmt.Sprintf(s, args...))
 }
 
 // RequestLogHook allows a function to run before each retry. The HTTP
@@ -259,7 +281,7 @@ type ResponseLogHook func(Logger, *http.Response)
 // and returns the response to the caller. If CheckRetry returns an error,
 // that error value is returned in lieu of the error from the request. The
 // Client will close any response body when retrying, but if the retry is
-// aborted it is up to the CheckResponse callback to properly close any
+// aborted it is up to the CheckRetry callback to properly close any
 // response body before returning.
 type CheckRetry func(ctx context.Context, resp *http.Response, err error) (bool, error)
 
@@ -278,7 +300,7 @@ type ErrorHandler func(resp *http.Response, err error, numTries int) (*http.Resp
 // like automatic retries to tolerate minor outages.
 type Client struct {
 	HTTPClient *http.Client // Internal HTTP client.
-	Logger     interface{}  // Customer logger instance. Can be either Logger or hclog.Logger
+	Logger     interface{}  // Customer logger instance. Can be either Logger or LeveledLogger
 
 	RetryWaitMin time.Duration // Minimum time to wait
 	RetryWaitMax time.Duration // Maximum time to wait
@@ -308,7 +330,8 @@ type Client struct {
 // NewClient creates a new Client with default settings.
 func NewClient() *Client {
 	return &Client{
-		HTTPClient:   cleanhttp.DefaultClient(),
+		HTTPClient:   cleanhttp.DefaultPooledClient(),
+		Logger:       defaultLogger,
 		RetryWaitMin: defaultRetryWaitMin,
 		RetryWaitMax: defaultRetryWaitMax,
 		RetryMax:     defaultRetryMax,
@@ -320,17 +343,15 @@ func NewClient() *Client {
 func (c *Client) logger() interface{} {
 	c.loggerInit.Do(func() {
 		if c.Logger == nil {
-			c.Logger = log.New(os.Stderr, "", log.LstdFlags)
-		} else {
-			switch c.Logger.(type) {
-			case Logger:
-				// ok
-			case hclog.Logger:
-				// ok
-			default:
-				// This should happen in dev when they are setting Logger and work on code, not in prod.
-				panic(fmt.Sprintf("invalid logger type passed, must be Logger or hclog.Logger, was %T", c.Logger))
-			}
+			return
+		}
+
+		switch c.Logger.(type) {
+		case Logger, LeveledLogger:
+			// ok
+		default:
+			// This should happen in dev when they are setting Logger and work on code, not in prod.
+			panic(fmt.Sprintf("invalid logger type passed, must be Logger or LeveledLogger, was %T", c.Logger))
 		}
 	})
 
@@ -346,8 +367,27 @@ func DefaultRetryPolicy(ctx context.Context, resp *http.Response, err error) (bo
 	}
 
 	if err != nil {
-		return true, err
+		if v, ok := err.(*url.Error); ok {
+			// Don't retry if the error was due to too many redirects.
+			if redirectsErrorRe.MatchString(v.Error()) {
+				return false, nil
+			}
+
+			// Don't retry if the error was due to an invalid protocol scheme.
+			if schemeErrorRe.MatchString(v.Error()) {
+				return false, nil
+			}
+
+			// Don't retry if the error was due to TLS cert verification failure.
+			if _, ok := v.Err.(x509.UnknownAuthorityError); ok {
+				return false, nil
+			}
+		}
+
+		// The error is likely recoverable so retry.
+		return true, nil
 	}
+
 	// Check the response code. We retry on 500-range responses to allow
 	// the server time to recover, as 500's are typically not permanent
 	// errors and may relate to outages on the server side. This will catch
@@ -418,11 +458,17 @@ func PassthroughErrorHandler(resp *http.Response, err error, _ int) (*http.Respo
 
 // Do wraps calling an HTTP method with retries.
 func (c *Client) Do(req *Request) (*http.Response, error) {
-	if c.logger() != nil {
-		switch v := c.logger().(type) {
+	if c.HTTPClient == nil {
+		c.HTTPClient = cleanhttp.DefaultPooledClient()
+	}
+
+	logger := c.logger()
+
+	if logger != nil {
+		switch v := logger.(type) {
 		case Logger:
 			v.Printf("[DEBUG] %s %s", req.Method, req.URL)
-		case hclog.Logger:
+		case LeveledLogger:
 			v.Debug("performing request", "method", req.Method, "url", req.URL)
 		}
 	}
@@ -437,6 +483,7 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		if req.body != nil {
 			body, err := req.body()
 			if err != nil {
+				c.HTTPClient.CloseIdleConnections()
 				return resp, err
 			}
 			if c, ok := body.(io.ReadCloser); ok {
@@ -447,10 +494,10 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		}
 
 		if c.RequestLogHook != nil {
-			switch v := c.logger().(type) {
+			switch v := logger.(type) {
 			case Logger:
 				c.RequestLogHook(v, req.Request, i)
-			case hclog.Logger:
+			case LeveledLogger:
 				c.RequestLogHook(hookLogger{v}, req.Request, i)
 			default:
 				c.RequestLogHook(nil, req.Request, i)
@@ -467,23 +514,21 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		checkOK, checkErr := c.CheckRetry(req.Context(), resp, err)
 
 		if err != nil {
-			if c.logger() != nil {
-				switch v := c.logger().(type) {
-				case Logger:
-					v.Printf("[ERR] %s %s request failed: %v", req.Method, req.URL, err)
-				case hclog.Logger:
-					v.Error("request failed", "error", err, "method", req.Method, "url", req.URL)
-				}
+			switch v := logger.(type) {
+			case Logger:
+				v.Printf("[ERR] %s %s request failed: %v", req.Method, req.URL, err)
+			case LeveledLogger:
+				v.Error("request failed", "error", err, "method", req.Method, "url", req.URL)
 			}
 		} else {
 			// Call this here to maintain the behavior of logging all requests,
 			// even if CheckRetry signals to stop.
 			if c.ResponseLogHook != nil {
 				// Call the response logger function if provided.
-				switch v := c.logger().(type) {
+				switch v := logger.(type) {
 				case Logger:
 					c.ResponseLogHook(v, resp)
-				case hclog.Logger:
+				case LeveledLogger:
 					c.ResponseLogHook(hookLogger{v}, resp)
 				default:
 					c.ResponseLogHook(nil, resp)
@@ -496,6 +541,7 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 			if checkErr != nil {
 				err = checkErr
 			}
+			c.HTTPClient.CloseIdleConnections()
 			return resp, err
 		}
 
@@ -516,22 +562,24 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		if code > 0 {
 			desc = fmt.Sprintf("%s (status: %d)", desc, code)
 		}
-		if c.logger() != nil {
-			switch v := c.logger().(type) {
+		if logger != nil {
+			switch v := logger.(type) {
 			case Logger:
 				v.Printf("[DEBUG] %s: retrying in %s (%d left)", desc, wait, remain)
-			case hclog.Logger:
+			case LeveledLogger:
 				v.Debug("retrying request", "request", desc, "timeout", wait, "remaining", remain)
 			}
 		}
 		select {
 		case <-req.Context().Done():
+			c.HTTPClient.CloseIdleConnections()
 			return nil, req.Context().Err()
 		case <-time.After(wait):
 		}
 	}
 
 	if c.ErrorHandler != nil {
+		c.HTTPClient.CloseIdleConnections()
 		return c.ErrorHandler(resp, err, c.RetryMax+1)
 	}
 
@@ -540,6 +588,7 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 	if resp != nil {
 		resp.Body.Close()
 	}
+	c.HTTPClient.CloseIdleConnections()
 	return nil, fmt.Errorf("%s %s giving up after %d attempts",
 		req.Method, req.URL, c.RetryMax+1)
 }
@@ -553,7 +602,7 @@ func (c *Client) drainBody(body io.ReadCloser) {
 			switch v := c.logger().(type) {
 			case Logger:
 				v.Printf("[ERR] error reading response body: %v", err)
-			case hclog.Logger:
+			case LeveledLogger:
 				v.Error("error reading response body", "error", err)
 			}
 		}

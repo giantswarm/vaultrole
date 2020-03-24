@@ -1,10 +1,12 @@
 package key
 
 import (
-	"crypto/sha1"
+	"crypto/sha512"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/giantswarm/microerror"
 )
 
 // AllowedDomains computes a comma separated list of alternative names where the
@@ -74,8 +76,11 @@ func computeOrgHash(organizations []string) string {
 	sort.Strings(organizations)
 	s := strings.Join(organizations, ",")
 
-	h := sha1.New()
-	h.Write([]byte(s))
+	h := sha512.New()
+	_, err := h.Write([]byte(s))
+	if err != nil {
+		panic(microerror.JSON(err))
+	}
 	bs := h.Sum(nil)
 
 	return fmt.Sprintf("%x", bs)

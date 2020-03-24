@@ -22,14 +22,7 @@ func (r *VaultRole) Update(config UpdateConfig) error {
 
 	// Update the requested role if it exists.
 	{
-		c := writeConfig{
-			AllowBareDomains: config.AllowBareDomains,
-			AllowSubdomains:  config.AllowSubdomains,
-			AltNames:         config.AltNames,
-			ID:               config.ID,
-			Organizations:    config.Organizations,
-			TTL:              config.TTL,
-		}
+		c := writeConfig(config)
 
 		err := r.write(c)
 		if err != nil {

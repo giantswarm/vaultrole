@@ -73,7 +73,7 @@ func Test_RoleName(t *testing.T) {
 				"blue",
 				"green",
 			},
-			ExpectedResult: "role-org-ae04e382ff1b455a454bfde83bdda9dc8d077649",
+			ExpectedResult: "role-org-90b351b2fd11e3f6adabda139ebb28a73a8a6997c1db1a9f2214dd2775e9e953378a10003d7a42bc1efd0ee970f1a380ee9a4a39e1ef6b1ec79700d659fc77ba",
 		},
 
 		// Case 3: The order of the orgs should not impact the hash.
@@ -83,7 +83,7 @@ func Test_RoleName(t *testing.T) {
 				"green",
 				"blue",
 			},
-			ExpectedResult: "role-org-ae04e382ff1b455a454bfde83bdda9dc8d077649",
+			ExpectedResult: "role-org-90b351b2fd11e3f6adabda139ebb28a73a8a6997c1db1a9f2214dd2775e9e953378a10003d7a42bc1efd0ee970f1a380ee9a4a39e1ef6b1ec79700d659fc77ba",
 		},
 
 		// Case 4: A different orgs list should yield a different hash.
@@ -94,7 +94,7 @@ func Test_RoleName(t *testing.T) {
 				"blue",
 				"red",
 			},
-			ExpectedResult: "role-org-40c7be91742c1d2343d32ea489e169b1121bc674",
+			ExpectedResult: "role-org-df4953e3027359c712f7baba9f289327f78d1a4834e3345806c53f61c29fd5479269ba73e4d1e899baad6de5a094c8bd89b40dc23e644399ca3b14c401e8f4f1",
 		},
 
 		// Case 5: A common case we see n production. The created hash here is of
@@ -105,7 +105,7 @@ func Test_RoleName(t *testing.T) {
 				"api",
 				"system:masters",
 			},
-			ExpectedResult: "role-org-f1b776344f5a19dbc38243e915767ff2ef9234df",
+			ExpectedResult: "role-org-7395c031992f478e2e0e8d3198272008d407e1bc209c0cd52048fdebdd4ac1e0afd1d904044d9a9a2b0fe515579a56a4daf2aea7092518218ef985371890109f",
 		},
 	}
 

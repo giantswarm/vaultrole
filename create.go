@@ -22,14 +22,7 @@ func (r *VaultRole) Create(config CreateConfig) error {
 
 	// Create the requested role if it does not exist.
 	{
-		c := writeConfig{
-			AllowBareDomains: config.AllowBareDomains,
-			AllowSubdomains:  config.AllowSubdomains,
-			AltNames:         config.AltNames,
-			ID:               config.ID,
-			Organizations:    config.Organizations,
-			TTL:              config.TTL,
-		}
+		c := writeConfig(config)
 
 		err := r.write(c)
 		if err != nil {

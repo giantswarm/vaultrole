@@ -5,8 +5,9 @@ import (
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
-	"github.com/giantswarm/vaultrole/key"
 	vaultclient "github.com/hashicorp/vault/api"
+
+	"github.com/giantswarm/vaultrole/key"
 )
 
 type Config struct {
